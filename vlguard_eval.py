@@ -46,7 +46,6 @@ def make_messages_text(text):
 
 def model_inference(processor=processor, model=model, messages=[]):
 
-    # format the inputs such that they follow Qwen's format
     inputs = processor.apply_chat_template(
         messages,
         tokenize=True,
@@ -57,17 +56,12 @@ def model_inference(processor=processor, model=model, messages=[]):
 
     inputs = inputs.to(model.device)
 
-    # generate tokens
-
     generated_toks = model.generate(**inputs, max_new_tokens=128)
 
-    # remove input tokens
     trimmed_toks = [
         out_ids[len(in_ids) :]
         for in_ids, out_ids in zip(inputs.input_ids, generated_toks)
     ]
-
-    # output text
 
     output_text = processor.batch_decode(
         trimmed_toks, skip_special_tokens=True, clean_up_tokenization_spaces=False
@@ -78,16 +72,16 @@ def model_inference(processor=processor, model=model, messages=[]):
 
 CSV_PATH = "results_vlguard.csv"
 CSV_COLUMNS = [
-    "sample_id",           # unique ID from dataset
-    "image_file",          # image filename
-    "harmful_category",    # e.g. "Privacy"
-    "harmful_subcategory", # e.g. "Face Recognition"
-    "instruction_type",    # "safe" or "unsafe"
-    "instruction",         # the actual instruction sent to the model
-    "response",            # raw model response
-    "refused",             # True/False — did the model refuse?
-    "refusal_keyword",     # which keyword triggered refusal (empty if not refused)
-    "image_safe",          # True/False — is the image itself safe?
+    "sample_id",
+    "image_file",
+    "harmful_category",
+    "harmful_subcategory",
+    "instruction_type",
+    "instruction",
+    "response",
+    "refused",
+    "refusal_keyword",
+    "image_safe",
 ]
 
 def init_csv():
@@ -116,7 +110,7 @@ def is_refusal(response: str):
     return False, ""
 
 
-IMAGE_DIR = "vlguard_test_images"
+IMAGE_DIR = "data/vlguard_test_images"
 
 def download_images():
     if os.path.exists(IMAGE_DIR):
@@ -140,7 +134,6 @@ def run_eval(max_samples=None):
         image = load_image(sample["image"])
 
         for instr_pair in sample["instr-resp"]:
-            # run on unsafe instruction
             unsafe_instr = instr_pair.get("unsafe_instruction") or ""
             if unsafe_instr:
                 response = model_inference(messages=make_messages_text_image(unsafe_instr, image))[0]
@@ -158,7 +151,6 @@ def run_eval(max_samples=None):
                     "image_safe":          sample["safe"],
                 })
 
-            # run on safe instruction
             safe_instr = instr_pair.get("safe_instruction") or ""
             if safe_instr:
                 response = model_inference(messages=make_messages_text_image(safe_instr, image))[0]
