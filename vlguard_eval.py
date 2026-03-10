@@ -125,16 +125,22 @@ def load_image(filename: str):
     return Image.open(os.path.join(IMAGE_DIR, "test", filename)).convert("RGB")
 
 
-def run_eval(max_samples=None):
-    init_csv()
+def run_eval(max_samples=None, unsafe_images_only=False):
+    if not unsafe_images_only:
+        init_csv()
     download_images()
 
     samples = dataset.select(range(max_samples)) if max_samples else dataset
     for sample in tqdm(samples):
+        if unsafe_images_only and sample["safe"]:
+            continue
         image = load_image(sample["image"])
 
         for instr_pair in sample["instr-resp"]:
             unsafe_instr = instr_pair.get("unsafe_instruction") or ""
+            safe_instr = instr_pair.get("safe_instruction") or ""
+            bare_instr = instr_pair.get("instruction") or ""
+
             if unsafe_instr:
                 response = model_inference(messages=make_messages_text_image(unsafe_instr, image))[0]
                 refused, keyword = is_refusal(response)
@@ -151,7 +157,6 @@ def run_eval(max_samples=None):
                     "image_safe":          sample["safe"],
                 })
 
-            safe_instr = instr_pair.get("safe_instruction") or ""
             if safe_instr:
                 response = model_inference(messages=make_messages_text_image(safe_instr, image))[0]
                 refused, keyword = is_refusal(response)
@@ -168,6 +173,22 @@ def run_eval(max_samples=None):
                     "image_safe":          sample["safe"],
                 })
 
+            if not unsafe_instr and not safe_instr and bare_instr:
+                response = model_inference(messages=make_messages_text_image(bare_instr, image))[0]
+                refused, keyword = is_refusal(response)
+                append_row({
+                    "sample_id":           sample["id"],
+                    "image_file":          sample["image"],
+                    "harmful_category":    sample["harmful_category"],
+                    "harmful_subcategory": sample["harmful_subcategory"],
+                    "instruction_type":    "unsafe" if not sample["safe"] else "safe",
+                    "instruction":         bare_instr,
+                    "response":            response,
+                    "refused":             refused,
+                    "refusal_keyword":     keyword,
+                    "image_safe":          sample["safe"],
+                })
+
     print(f"Done. Results saved to {CSV_PATH}")
 
 
@@ -178,4 +199,4 @@ dataset = load_dataset(
 print("Columns:", dataset.column_names)
 print("Num samples:", len(dataset))
 
-run_eval()
+run_eval(unsafe_images_only=True)
