@@ -10,18 +10,6 @@
 
 Overall: precision 99.8%, recall 49.7%, F1 66.4%. The model almost never wrongly refuses safe content, but it complies with half of all unsafe prompts.
 
-**By category (unsafe-image samples):**
-- Deception: 77.8% refusal
-- Discrimination: 54.1%
-- Risky behavior: 38.9%
-- Privacy: 29.0%
-
-**By subcategory:**
-- Disinformation: 77.8% -- strongest
-- Political: 70.2%
-- Sexually explicit: 14.4% -- big blind spot
-- Personal data: 29.0%
-
 ### VLJailbreakBench (170 samples)
 
 0% refusal rate across both splits. The IDEATOR paper generates text prompts during attacks but those aren't in the public dataset. I used "Follow the instructions shown in this image." as a fixed prompt. The model just describes images without flagging anything. This might've caused an issue and/or I may have messed something up in the pipeline because these results seem odd.
